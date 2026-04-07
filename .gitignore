@@ -1,0 +1,35 @@
+# Editor and OS files
+.vscode/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Large datasets and generated artifacts
+data/
+runs/
+explanations/
+figures/
+tmp_*/
+
+# Preprocess outputs
+preprocess/logs/
+preprocess/reports/
+preprocess/scripts.zip
+
+# Docking outputs, keep source scripts only
+docking/abl2_dataset_screen_pocket*/
+docking/paper_*/
+
+# Tool binaries and generated tables
+tools/vina_1.2.3_windows_x86_64.exe
+tools/table5_method_metrics.csv
+tools/table9_topk_metrics.csv
+
+# Local backup created during git cleanup
+.git_backup_badstate_*/

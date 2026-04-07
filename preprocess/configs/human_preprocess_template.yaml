@@ -1,0 +1,39 @@
+DATA:
+  DATASET: human
+  CSV_RAW: data/raw/human/moltrans/full.csv
+  CSV_WITH_PID: data/interim/human/pairs_with_pid/full_with_pid.csv
+
+  ALPHAFOLD_DIR: data/raw/human/alphafold_structures
+  P2RANK_RAW_DIR: data/raw/human/p2rank_raw
+
+  DRUG_CANON_DIR: data/interim/human/drug_canon
+  PHARM_DIR: data/interim/human/pharm_features
+  ESM2_DIR: data/interim/human/esm2_tokens
+  DRUG_GRAPH_CACHE: data/processed/human/drug_graph_cache/drug_graph_cache.pt
+  POCKET_CANDIDATE_DIR: data/interim/human/pocket_candidates
+
+  POCKET_CACHE_DIR: data/processed/human/pocket_graph_cache
+  POCKET_MANIFEST: data/processed/human/pocket_manifest/manifest.jsonl
+  SPLIT_DIR: data/processed/human/splits
+  COVERAGE_DIR: data/processed/human/coverage
+
+POCKET:
+  TOPK: 5
+  SCORE_THRESH: 0.0
+  MIN_RESIDUES: 5
+  DIST_CUTOFF_ANGSTROM: 10.0
+  SEQDIST_NORM: log1p
+  SEQDIST_DENOM: 128.0
+
+SPLIT:
+  RANDOM_SEED: 42
+  VALID_RATIO: 0.1
+  TEST_RATIO: 0.2
+  MAKE_RANDOM: true
+  MAKE_UNSEEN_PROTEIN: true
+  MAKE_UNSEEN_DRUG: true
+
+REPORT:
+  ESM_COVERAGE_FILE: data/processed/human/coverage/esm_coverage.json
+  POCKET_COVERAGE_FILE: data/processed/human/coverage/pocket_coverage.json
+  SUMMARY_CSV: data/processed/human/coverage/summary.csv

@@ -1,0 +1,24 @@
+@echo off
+setlocal
+
+cd /d "%~dp0"
+
+echo [INFO] Running branch ablation experiments from:
+echo %CD%
+echo.
+
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/human_full_model_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/human_wo_pharmacophore_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/human_wo_pocket_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/human_wo_graph_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/human_wo_sequence_branch_3view_emaes.yaml
+
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/biosnap_full_model_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/biosnap_wo_pharmacophore_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/biosnap_wo_pocket_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/biosnap_wo_graph_branch_3view_emaes.yaml
+python train/train_gated_canon_real_pocket_seqdist_3view_soft_pocket_bias_emaes.py --cfg configs/branch_ablation/biosnap_wo_sequence_branch_3view_emaes.yaml
+
+echo.
+echo [INFO] All ablation commands have finished.
+pause

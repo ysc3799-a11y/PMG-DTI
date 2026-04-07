@@ -1,0 +1,96 @@
+DATA:
+  CSV: data/interim/human/pairs_with_pid/full_with_pid.csv
+  SPLIT: data/processed/human/splits/human_random_seed42.json
+  PHARM: data/interim/human/pharm_features/pharm_fixed64_legacy.pt
+  ESM2: data/interim/human/esm2_tokens/esm2_tokens_t6_fp16.pt
+  MASK_SPECIAL_TOKENS: 0
+
+  P2RANK_WORK_DIR: data/raw/human/p2rank_raw
+  PROTEIN_POCKETS_CSV: data/raw/human/p2rank_raw/protein_pockets.csv
+  PDB_INDEX_CSV: data/raw/human/p2rank_raw/pdb_index.csv
+  P2RANK_OUT_DIR: data/raw/human/p2rank_raw
+  POCKET_CACHE_DIR: data/processed/human/pocket_graph_cache_top3_prob01_expand0
+  DRUG_GRAPH_CACHE: data/processed/human/drug_graph_cache/drug_graph_cache.pt
+
+  PROTEIN_ID_COL: Protein_ID
+  POCKET_TOPK: 3
+  POCKET_MAX_NODES: 96
+  POCKET_KNN_K: 16
+  POCKET_EXPAND_MIN_NODES: 0
+  POCKET_SEQDIST_NORM: log1p
+  POCKET_SEQDIST_NORM_DENOM: 128.0
+  POCKET_EDGE_RBF_BINS: 16
+  POCKET_EDGE_RBF_DMIN: 0.0
+  POCKET_EDGE_RBF_DMAX: 20.0
+  POCKET_STRUCT_FEAT: 0
+  POCKET_PROB_THRES: 0.1
+  POCKET_MIN_RESIDUES: 8
+  POCKET_RAW_ONLY: 1
+  POCKET_EDGE_MODE: radius
+  POCKET_RADIUS_CUTOFF: 10.0
+  POCKET_RADIUS_MAX_NEIGHBORS: 32
+  NO_PHARM: 0
+  DROP_NO_POCKET: 0
+
+MODEL:
+  NODE_IN: 74
+  GCN_HIDDEN: 160
+  GCN_OUT: 160
+  GCN_LAYERS: 3
+
+  NUM_PHARM_TYPES: 64
+  PHARM_EMB: 96
+  PHARM_OUT: 96
+  PHARM_POOL: attn
+  PHARM_SELF_ATTN: 0
+  PHARM_SELF_NHEAD: 4
+  PHARM_SELF_DROPOUT: 0.1
+  PROT_POOL: attn
+
+  USE_ANCHOR: 1
+  PHARM_USE_GRAPH_ATTN: 1
+  USE_POCKET: 1
+  USE_MULTIVIEW: 0
+  USE_PP_ATTN: 1
+
+  POCKET_DIM: 128
+  POCKET_NODE_PROJ: 128
+  POCKET_GNN_HIDDEN: 128
+  POCKET_GNN_LAYERS: 2
+  POCKET_EDGE_FEAT_DIM: 21
+  POCKET_EDGE_HIDDEN: 64
+  POCKET_INST_POOL: softmax
+  POCKET_USE_STRUCT_FEAT: 0
+  POCKET_SCORE_PRIOR: 1
+  POCKET_SCORE_SCALE: 1.0
+
+  PP_ATTN_DROPOUT: 0.1
+  POCKET_POOL: softmax
+  POCKET_K: 32
+  POCKET_MIN_KEEP: 8
+  POCKET_TAU: 0.3
+  POCKET_DETACH_SCORE: 1
+  POCKET_INSTANCES: 1
+
+  FUSION_DIM: 320
+  GATE_HIDDEN: 320
+  MLP_HIDDEN: 320
+  DROPOUT: 0.1
+
+SOLVER:
+  SEED: 42
+  DEVICE: cuda:0
+  EPOCHS: 50
+  BATCH_SIZE: 16
+  LR: 0.0003
+  WEIGHT_DECAY: 0.00003
+  MAIN_METRIC: auc
+  AMP: 1
+  GRAD_ACCUM: 4
+  NUM_WORKERS: 0
+  SCHEDULER: cosine
+  MIN_LR: 0.00001
+
+RESULT:
+  SAVE_DIR: runs/ablation_singlevar
+  RUN_NAME: human_A1_newpharm_pocket_topk3_expand0_prob01_pp0_2view_pro_nostruct_sharedtrunk_ppattn1

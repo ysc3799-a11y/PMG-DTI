@@ -1,0 +1,54 @@
+DATA:
+  CSV: data/interim/human/pairs_with_pid/full_with_pid.csv
+  SPLIT: data/processed/human/splits/human_random_seed42.json
+  PHARM: data/interim/human/pharm_features/pharm_fixed64_legacy.pt
+  ESM2: data/interim/human/esm2_tokens/esm2_tokens_t6_fp16.pt
+  MASK_SPECIAL_TOKENS: 0
+  DRUG_GRAPH_CACHE: data/processed/human/drug_graph_cache/drug_graph_cache.pt
+  NO_PHARM: 0
+MODEL:
+  NODE_IN: 74
+  GCN_HIDDEN: 160
+  GCN_OUT: 160
+  GCN_LAYERS: 3
+  NUM_PHARM_TYPES: 64
+  PHARM_EMB: 96
+  PHARM_OUT: 96
+  PHARM_POOL: attn
+  PHARM_SELF_ATTN: 0
+  PHARM_SELF_NHEAD: 4
+  PHARM_SELF_DROPOUT: 0.1
+  PROT_POOL: attn
+  USE_ANCHOR: 1
+  PHARM_USE_GRAPH_ATTN: 1
+  USE_POCKET: 0
+  USE_MULTIVIEW: 0
+  USE_PP_ATTN: 1
+  PP_ATTN_DROPOUT: 0.1
+  FUSION_DIM: 320
+  GATE_HIDDEN: 320
+  MLP_HIDDEN: 320
+  DROPOUT: 0.15
+  PAIR_GATE_INIT_BIAS: -2.0
+SOLVER:
+  SEED: 42
+  DEVICE: cuda:0
+  EPOCHS: 50
+  BATCH_SIZE: 16
+  LR: 0.00025
+  WEIGHT_DECAY: 0.0001
+  MAIN_METRIC: auc
+  AMP: 1
+  GRAD_ACCUM: 4
+  NUM_WORKERS: 0
+  SCHEDULER: cosine
+  MIN_LR: 1.0e-05
+  LABEL_SMOOTHING: 0.02
+  PAIRWISE_AUC_LOSS_WEIGHT: 0.1
+  EMA: 1
+  EMA_DECAY: 0.999
+  EARLY_STOPPING_PATIENCE: 8
+  EARLY_STOPPING_MIN_DELTA: 0.0
+RESULT:
+  SAVE_DIR: runs/strongbase_2view_pro
+  RUN_NAME: human_A1_newpharm_no_pocket_2view_pro_strongbase
