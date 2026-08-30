@@ -34,7 +34,7 @@ def stratified_indices(y, val_ratio, test_ratio, seed):
     return train, val, test
 
 
-def group_split(df, group_col, val_ratio, test_ratio, seed):
+def _group_split_count_only(df, group_col, val_ratio, test_ratio, seed):
     groups = sorted(df[group_col].astype(str).unique().tolist())
     rng = random.Random(seed)
     rng.shuffle(groups)
@@ -73,6 +73,88 @@ def group_split(df, group_col, val_ratio, test_ratio, seed):
         else:
             train.extend(idxs)
     return train, val, test
+
+
+def group_split(df, group_col, val_ratio, test_ratio, seed):
+    rng = random.Random(seed)
+    total_n = int(len(df))
+    total_pos = int(df["Y"].astype(int).sum())
+    target_n = {
+        "val": int(round(total_n * val_ratio)),
+        "test": int(round(total_n * test_ratio)),
+    }
+    target_n["train"] = int(total_n - target_n["val"] - target_n["test"])
+    target_pos = {
+        "val": int(round(total_pos * val_ratio)),
+        "test": int(round(total_pos * test_ratio)),
+    }
+    target_pos["train"] = int(total_pos - target_pos["val"] - target_pos["test"])
+
+    groups = []
+    global_pos_rate = float(total_pos) / float(max(total_n, 1))
+    for g, sub in df.groupby(group_col, sort=False):
+        idxs = sub.index.tolist()
+        pos = int(sub["Y"].astype(int).sum())
+        n = int(len(idxs))
+        groups.append(
+            {
+                "group": str(g),
+                "idxs": idxs,
+                "n": n,
+                "pos": pos,
+                "pos_rate": float(pos) / float(max(n, 1)),
+                "rand": rng.random(),
+            }
+        )
+
+    groups.sort(
+        key=lambda item: (
+            -int(item["n"]),
+            -abs(float(item["pos_rate"]) - global_pos_rate),
+            float(item["rand"]),
+        )
+    )
+
+    split_counts = {"train": 0, "val": 0, "test": 0}
+    split_pos = {"train": 0, "val": 0, "test": 0}
+    split_groups = {"train": [], "val": [], "test": []}
+
+    def score_assignment(split_name, item):
+        tmp_counts = dict(split_counts)
+        tmp_pos = dict(split_pos)
+        tmp_counts[split_name] += int(item["n"])
+        tmp_pos[split_name] += int(item["pos"])
+
+        cost = 0.0
+        for name in ("train", "val", "test"):
+            tgt_n = max(int(target_n[name]), 1)
+            tgt_pos = max(int(target_pos[name]), 1)
+            count_err = (float(tmp_counts[name]) - float(target_n[name])) / float(tgt_n)
+            pos_err = (float(tmp_pos[name]) - float(target_pos[name])) / float(tgt_pos)
+            cost += 2.0 * (count_err ** 2)
+            cost += 1.0 * (pos_err ** 2)
+
+        # Strongly discourage overshooting holdout sizes; train absorbs the remainder.
+        for name in ("val", "test"):
+            if tmp_counts[name] > target_n[name]:
+                overflow = (float(tmp_counts[name] - target_n[name])) / float(max(target_n[name], 1))
+                cost += 8.0 * (overflow ** 2)
+            if tmp_pos[name] > target_pos[name]:
+                pos_over = (float(tmp_pos[name] - target_pos[name])) / float(max(target_pos[name], 1))
+                cost += 4.0 * (pos_over ** 2)
+
+        return cost
+
+    for item in groups:
+        best_split = min(
+            ("train", "val", "test"),
+            key=lambda split_name: (score_assignment(split_name, item), split_name),
+        )
+        split_counts[best_split] += int(item["n"])
+        split_pos[best_split] += int(item["pos"])
+        split_groups[best_split].extend(item["idxs"])
+
+    return split_groups["train"], split_groups["val"], split_groups["test"]
 
 
 def write_split(path: Path, tr, va, te):

@@ -1,4 +1,4 @@
 """
-Dataset package for Pha-DTI.
+Dataset package for PMG-DTI.
 """
 

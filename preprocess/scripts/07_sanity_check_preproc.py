@@ -16,7 +16,7 @@ def safe_load_pt(path: str) -> Any:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Sanity checks for PhaDTI preprocessing artifacts.")
+    ap = argparse.ArgumentParser(description="Sanity checks for PMG-DTI preprocessing artifacts.")
     ap.add_argument("--pairs_csv", default="data/interim/human/pairs_with_pid/full_with_pid.csv")
     ap.add_argument("--pid_col", default="Protein_ID")
     ap.add_argument("--seq_col", default="Protein")

@@ -55,9 +55,9 @@ if _ROOT not in sys.path:
 
 # ---- import p2rank index helper ----
 try:
-    from p2rank_pockets_strict import build_index_from_protein_pockets_csv
+    from dataset.p2rank_pockets_strict import build_index_from_protein_pockets_csv
 except (ModuleNotFoundError, ImportError):
-    _p2_path = Path(_ROOT) / "p2rank_pockets_strict.py"
+    _p2_path = Path(_ROOT) / "dataset" / "p2rank_pockets_strict.py"
     if not _p2_path.is_file():
         raise
     _spec = importlib.util.spec_from_file_location("p2rank_pockets_strict", str(_p2_path))
@@ -69,7 +69,7 @@ except (ModuleNotFoundError, ImportError):
 
 # ---- import pocket graph utilities ----
 try:
-    from pocket_graph_seqdist import (
+    from dataset.pocket_graph_seqdist import (
         load_p2rank_pockets,
         parse_pdb_ca_records,
         parse_pdb_ca_coords,
@@ -80,7 +80,7 @@ try:
         POCKET_RADIUS_MAX_NEIGHBORS_DEFAULT,
     )
 except (ModuleNotFoundError, ImportError):
-    _pg_path = Path(_ROOT) / "pocket_graph_seqdist.py"
+    _pg_path = Path(_ROOT) / "dataset" / "pocket_graph_seqdist.py"
     if not _pg_path.is_file():
         raise
     _spec2 = importlib.util.spec_from_file_location("pocket_graph_seqdist", str(_pg_path))

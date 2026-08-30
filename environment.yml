@@ -1,0 +1,13 @@
+name: pmg-dti
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.23
+  - pip
+  - pip:
+      - -r requirements.txt
+
+# PyTorch 2.5.1+cu121 and DGL 2.2.1+cu121 were used in the audited
+# development environment. Install CUDA-specific wheels from the official
+# PyTorch and DGL indexes when GPU execution is required.

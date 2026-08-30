@@ -244,7 +244,7 @@ def process_one(
     top_entries: int,
 ) -> Tuple[dict, List[dict]]:
     session = requests.Session()
-    session.headers.update({"User-Agent": "Pha-DTI-RCSB-Holo-Mapper/1.0"})
+    session.headers.update({"User-Agent": "PMG-DTI-RCSB-Holo-Mapper/1.0"})
 
     query = build_search_query(uniprot_id=uniprot_id, min_ligand_mw_kda=min_ligand_mw_kda, rows=top_entries)
     resp = post_json(session, SEARCH_URL, query, timeout=timeout, max_retry=max_retry)

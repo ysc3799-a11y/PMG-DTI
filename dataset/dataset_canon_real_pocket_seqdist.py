@@ -1,7 +1,4 @@
-﻿#鐢熸垚鐪熷疄鍙ｈ鍥炬暟鎹苟鎻愪緵 collate_fn_real_pocket
-
-
-import json
+﻿import json
 import hashlib
 import os
 import math
@@ -18,12 +15,181 @@ from dataset.featurize_canon import (
     NODE_FEAT_DIM,
     smiles_to_drug_data,
 )
-from p2rank_pockets_strict import build_index_from_protein_pockets_csv
-from pocket_graph_seqdist import (
-    parse_pdb_ca_records,
-    load_p2rank_pockets,
-    build_pocket_templates,
-)
+try:
+    from dataset.p2rank_pockets_strict import build_index_from_protein_pockets_csv
+    from dataset.pocket_graph_seqdist import (
+        parse_pdb_ca_records,
+        load_p2rank_pockets,
+        build_pocket_templates,
+    )
+except ImportError:
+    from p2rank_pockets_strict import build_index_from_protein_pockets_csv
+    from pocket_graph_seqdist import (
+        parse_pdb_ca_records,
+        load_p2rank_pockets,
+        build_pocket_templates,
+    )
+
+
+_SHARED_DATAFRAME_CACHE: Dict[str, pd.DataFrame] = {}
+_SHARED_JSON_CACHE: Dict[str, Dict[str, Any]] = {}
+_SHARED_TORCH_CACHE: Dict[str, Any] = {}
+_SHARED_DRUG_GRAPH_CACHE: Dict[str, Dict[str, Any]] = {}
+_SHARED_P2RANK_INDEX_CACHE: Dict[Tuple[str, str], Dict[str, Tuple[str, str]]] = {}
+_SHARED_PDB_INDEX_CACHE: Dict[str, Dict[str, str]] = {}
+
+
+def _cache_key(path: Optional[str]) -> str:
+    if not path:
+        return ""
+    return os.path.abspath(os.path.normpath(str(path)))
+
+
+def _load_json_cached(path: str) -> Dict[str, Any]:
+    key = _cache_key(path)
+    obj = _SHARED_JSON_CACHE.get(key, None)
+    if obj is None:
+        with open(path, "r", encoding="utf-8") as f:
+            obj = json.load(f)
+        _SHARED_JSON_CACHE[key] = obj
+    return obj
+
+
+def _load_csv_cached(path: str) -> pd.DataFrame:
+    key = _cache_key(path)
+    df = _SHARED_DATAFRAME_CACHE.get(key, None)
+    if df is None:
+        df = pd.read_csv(path)
+        _SHARED_DATAFRAME_CACHE[key] = df
+    return df
+
+
+def _torch_load_cached(path: str):
+    key = _cache_key(path)
+    obj = _SHARED_TORCH_CACHE.get(key, None)
+    if obj is None:
+        try:
+            obj = torch.load(path, weights_only=True, map_location="cpu")
+        except Exception:
+            obj = torch.load(path, map_location="cpu")
+        _SHARED_TORCH_CACHE[key] = obj
+    return obj
+
+
+def _load_p2rank_index_cached(protein_pockets_csv: str, p2rank_out_dir: Optional[str]) -> Dict[str, Tuple[str, str]]:
+    cache_key = (_cache_key(protein_pockets_csv), _cache_key(p2rank_out_dir))
+    obj = _SHARED_P2RANK_INDEX_CACHE.get(cache_key, None)
+    if obj is None:
+        obj = build_index_from_protein_pockets_csv(
+            protein_pockets_csv=protein_pockets_csv,
+            p2rank_out_dir=p2rank_out_dir,
+            protein_id_col="Protein_ID",
+            predictions_col="predictions_csv",
+        )
+        _SHARED_P2RANK_INDEX_CACHE[cache_key] = obj
+    return obj
+
+
+def _load_drug_graph_cache_cached(path: str) -> Dict[str, Any]:
+    key = _cache_key(path)
+    payload = _SHARED_DRUG_GRAPH_CACHE.get(key, None)
+    if payload is not None:
+        return payload
+
+    payload = {
+        "drug_edge_feat_dim": int(DRUG_EDGE_FEAT_DIM),
+        "drug_fp_dim": int(DEFAULT_MORGAN_NBITS),
+        "drug_desc_dim": int(DRUG_DESC_DIM),
+        "graphs": {},
+    }
+    if not path or not os.path.isfile(path):
+        _SHARED_DRUG_GRAPH_CACHE[key] = payload
+        return payload
+
+    obj = None
+    load_err: Optional[Exception] = None
+    try:
+        obj = torch.load(path, weights_only=True, map_location="cpu")
+    except Exception as e:
+        load_err = e
+        try:
+            obj = torch.load(path, map_location="cpu")
+        except Exception as e2:
+            load_err = e2
+            obj = None
+
+    if isinstance(obj, dict):
+        if "drug_edge_feat_dim" in obj:
+            try:
+                payload["drug_edge_feat_dim"] = int(obj["drug_edge_feat_dim"])
+            except Exception:
+                pass
+        if "drug_fp_dim" in obj:
+            try:
+                payload["drug_fp_dim"] = int(obj["drug_fp_dim"])
+            except Exception:
+                pass
+        if "drug_desc_dim" in obj:
+            try:
+                payload["drug_desc_dim"] = int(obj["drug_desc_dim"])
+            except Exception:
+                pass
+
+        graphs = obj.get("graphs", obj)
+        if isinstance(graphs, dict):
+            parsed: Dict[str, Dict[str, torch.Tensor]] = {}
+            for k, v in graphs.items():
+                if not (isinstance(v, dict) and ("node_feat" in v) and ("edge_index" in v)):
+                    continue
+                try:
+                    edge_attr = v.get("edge_attr", None)
+                    if isinstance(edge_attr, torch.Tensor):
+                        edge_attr = edge_attr.float().cpu()
+                        if edge_attr.dim() == 1:
+                            edge_attr = edge_attr.view(-1, 1)
+                    else:
+                        n_edges = int(v["edge_index"].shape[1]) if isinstance(v["edge_index"], torch.Tensor) else 0
+                        edge_attr = torch.zeros((n_edges, int(payload["drug_edge_feat_dim"])), dtype=torch.float32)
+
+                    node_pos = v.get("node_pos", None)
+                    if isinstance(node_pos, torch.Tensor):
+                        node_pos = node_pos.float().cpu()
+                        if node_pos.dim() != 2 or int(node_pos.shape[1]) != 3:
+                            node_pos = torch.zeros((int(v["node_feat"].shape[0]), 3), dtype=torch.float32)
+                    else:
+                        node_pos = torch.zeros((int(v["node_feat"].shape[0]), 3), dtype=torch.float32)
+
+                    drug_fp = v.get("drug_fp", None)
+                    if isinstance(drug_fp, torch.Tensor):
+                        drug_fp = drug_fp.float().cpu().view(-1)
+                    else:
+                        drug_fp = torch.zeros((int(payload["drug_fp_dim"]),), dtype=torch.float32)
+
+                    drug_desc = v.get("drug_desc", None)
+                    if isinstance(drug_desc, torch.Tensor):
+                        drug_desc = drug_desc.float().cpu().view(-1)
+                    else:
+                        drug_desc = torch.zeros((int(payload["drug_desc_dim"]),), dtype=torch.float32)
+
+                    parsed[str(k)] = {
+                        "node_feat": v["node_feat"].float().cpu(),
+                        "edge_index": v["edge_index"].long().cpu(),
+                        "edge_attr": edge_attr,
+                        "node_pos": node_pos,
+                        "drug_fp": drug_fp,
+                        "drug_desc": drug_desc,
+                    }
+                except Exception:
+                    continue
+            payload["graphs"] = parsed
+    elif load_err is not None:
+        print(
+            f"[WARN] drug graph cache load failed; fallback to on-the-fly graph build. "
+            f"path={path} err={load_err}"
+        )
+
+    _SHARED_DRUG_GRAPH_CACHE[key] = payload
+    return payload
 
 
 def sha1(text: str) -> str:
@@ -47,7 +213,11 @@ def _normalize_seqdist(seq_dist: torch.Tensor, method: str, denom: float) -> tor
 def build_pdb_index(pdb_index_csv: str) -> Dict[str, str]:
     if not pdb_index_csv or not os.path.isfile(pdb_index_csv):
         return {}
-    df = pd.read_csv(pdb_index_csv)
+    key = _cache_key(pdb_index_csv)
+    cached = _SHARED_PDB_INDEX_CACHE.get(key, None)
+    if cached is not None:
+        return cached
+    df = _load_csv_cached(pdb_index_csv)
     if "Protein_ID" not in df.columns or "pdb_path" not in df.columns:
         return {}
     out: Dict[str, str] = {}
@@ -57,6 +227,7 @@ def build_pdb_index(pdb_index_csv: str) -> Dict[str, str]:
         if not pid or not path:
             continue
         out[pid] = os.path.normpath(path)
+    _SHARED_PDB_INDEX_CACHE[key] = out
     return out
 
 
@@ -101,14 +272,13 @@ class HumanDTIDatasetCanonRealPocket(Dataset):
         pocket_radius_cutoff: float = 10.0,
         pocket_radius_max_neighbors: int = 32,
     ):
-        self.df = pd.read_csv(csv_path)
-        with open(split_path, "r", encoding="utf-8") as f:
-            split_obj = json.load(f)
+        self.df = _load_csv_cached(csv_path)
+        split_obj = _load_json_cached(split_path)
         if split not in split_obj:
             raise KeyError(f"split '{split}' not found in {split_path}, available: {list(split_obj.keys())}")
         self.indices = list(split_obj[split])
 
-        pharm = torch.load(pharm_path, weights_only=True, map_location="cpu")
+        pharm = _torch_load_cached(pharm_path)
         self.pharm_type_all = pharm["pharm_type"]      # [N, P]
         self.pharm_mask_all = pharm["pharm_mask"]      # [N, P]
         self.pharm_anchor_all = pharm.get("pharm_anchor", None)  # optional [N, P]
@@ -124,7 +294,7 @@ class HumanDTIDatasetCanonRealPocket(Dataset):
         self.pharm_center_dim = int(self.pharm_center_all.shape[-1]) if isinstance(self.pharm_center_all, torch.Tensor) and self.pharm_center_all.dim() == 3 else 0
         self.pharm_multi_anchor_k = int(self.pharm_multi_anchor_all.shape[-1]) if isinstance(self.pharm_multi_anchor_all, torch.Tensor) and self.pharm_multi_anchor_all.dim() == 3 else 0
 
-        esm = torch.load(esm2_path, weights_only=True, map_location="cpu")
+        esm = _torch_load_cached(esm2_path)
         self.esm_dim = int(esm.get("dim", esm.get("d_model", 0)))
         self.esm_mode = "tokens" if "tokens" in esm else ("mean" if "embeddings" in esm else None)
         if self.esm_mode is None:
@@ -176,11 +346,9 @@ class HumanDTIDatasetCanonRealPocket(Dataset):
 
         self.p2rank_index: Dict[str, Tuple[str, str]] = {}
         if protein_pockets_csv:
-            self.p2rank_index = build_index_from_protein_pockets_csv(
+            self.p2rank_index = _load_p2rank_index_cached(
                 protein_pockets_csv=protein_pockets_csv,
                 p2rank_out_dir=p2rank_out_dir,
-                protein_id_col="Protein_ID",
-                predictions_col="predictions_csv",
             )
 
         self.pdb_index: Dict[str, str] = build_pdb_index(pdb_index_csv) if pdb_index_csv else {}
@@ -208,78 +376,11 @@ class HumanDTIDatasetCanonRealPocket(Dataset):
         self._drug_cache_miss_warned = False
 
         if self.drug_graph_cache_path and os.path.isfile(self.drug_graph_cache_path):
-            load_err: Optional[Exception] = None
-            obj: Optional[Dict[str, Any]] = None
-            try:
-                obj = torch.load(self.drug_graph_cache_path, weights_only=True, map_location="cpu")
-            except Exception as e:
-                load_err = e
-                try:
-                    obj = torch.load(self.drug_graph_cache_path, map_location="cpu")
-                except Exception as e2:
-                    load_err = e2
-                    obj = None
-            if isinstance(obj, dict):
-                if "drug_edge_feat_dim" in obj:
-                    try:
-                        self.drug_edge_feat_dim = int(obj["drug_edge_feat_dim"])
-                    except Exception:
-                        pass
-                if "drug_fp_dim" in obj:
-                    try:
-                        self.drug_fp_dim = int(obj["drug_fp_dim"])
-                    except Exception:
-                        pass
-                if "drug_desc_dim" in obj:
-                    try:
-                        self.drug_desc_dim = int(obj["drug_desc_dim"])
-                    except Exception:
-                        pass
-                graphs = obj.get("graphs", obj)
-                if isinstance(graphs, dict):
-                    for k, v in graphs.items():
-                        if isinstance(v, dict) and ("node_feat" in v) and ("edge_index" in v):
-                            try:
-                                edge_attr = v.get("edge_attr", None)
-                                if isinstance(edge_attr, torch.Tensor):
-                                    edge_attr = edge_attr.float().cpu()
-                                    if edge_attr.dim() == 1:
-                                        edge_attr = edge_attr.view(-1, 1)
-                                else:
-                                    n_edges = int(v["edge_index"].shape[1]) if isinstance(v["edge_index"], torch.Tensor) else 0
-                                    edge_attr = torch.zeros((n_edges, int(self.drug_edge_feat_dim)), dtype=torch.float32)
-                                node_pos = v.get("node_pos", None)
-                                if isinstance(node_pos, torch.Tensor):
-                                    node_pos = node_pos.float().cpu()
-                                    if node_pos.dim() != 2 or int(node_pos.shape[1]) != 3:
-                                        node_pos = torch.zeros((int(v["node_feat"].shape[0]), 3), dtype=torch.float32)
-                                else:
-                                    node_pos = torch.zeros((int(v["node_feat"].shape[0]), 3), dtype=torch.float32)
-                                drug_fp = v.get("drug_fp", None)
-                                if isinstance(drug_fp, torch.Tensor):
-                                    drug_fp = drug_fp.float().cpu().view(-1)
-                                else:
-                                    drug_fp = torch.zeros((int(self.drug_fp_dim),), dtype=torch.float32)
-                                drug_desc = v.get("drug_desc", None)
-                                if isinstance(drug_desc, torch.Tensor):
-                                    drug_desc = drug_desc.float().cpu().view(-1)
-                                else:
-                                    drug_desc = torch.zeros((int(self.drug_desc_dim),), dtype=torch.float32)
-                                self._drug_graph_cache[str(k)] = {
-                                    "node_feat": v["node_feat"].float().cpu(),
-                                    "edge_index": v["edge_index"].long().cpu(),
-                                    "edge_attr": edge_attr,
-                                    "node_pos": node_pos,
-                                    "drug_fp": drug_fp,
-                                    "drug_desc": drug_desc,
-                                }
-                            except Exception:
-                                continue
-            elif load_err is not None:
-                print(
-                    f"[WARN] drug graph cache load failed; fallback to on-the-fly graph build. "
-                    f"path={self.drug_graph_cache_path} err={load_err}"
-                )
+            cache_payload = _load_drug_graph_cache_cached(self.drug_graph_cache_path)
+            self.drug_edge_feat_dim = int(cache_payload.get("drug_edge_feat_dim", self.drug_edge_feat_dim))
+            self.drug_fp_dim = int(cache_payload.get("drug_fp_dim", self.drug_fp_dim))
+            self.drug_desc_dim = int(cache_payload.get("drug_desc_dim", self.drug_desc_dim))
+            self._drug_graph_cache = cache_payload.get("graphs", {})
 
         # Strict drop: keep only rows whose protein has at least one valid pocket template.
         # This removes "no_valid_pocket" samples when DROP_NO_POCKET=1.

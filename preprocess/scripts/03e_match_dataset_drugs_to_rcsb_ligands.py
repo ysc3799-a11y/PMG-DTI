@@ -35,7 +35,7 @@ def safe_float(x) -> Optional[float]:
 def get_json(url: str, timeout: int, max_retry: int) -> Optional[dict]:
     for attempt in range(max(1, int(max_retry))):
         try:
-            r = requests.get(url, timeout=timeout, headers={"User-Agent": "Pha-DTI-RCSB-Ligand-Matcher/1.0"})
+            r = requests.get(url, timeout=timeout, headers={"User-Agent": "PMG-DTI-RCSB-Ligand-Matcher/1.0"})
             if r.status_code == 404:
                 return None
             r.raise_for_status()

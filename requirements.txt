@@ -1,0 +1,17 @@
+# (Python 3.9.23)
+torch==2.5.1
+dgl==2.2.1
+dgllife==0.2.8
+rdkit==2025.3.5
+numpy==1.26.4
+pandas==2.3.1
+scikit-learn==1.6.1
+PyYAML==6.0.3
+tqdm==4.67.3
+requests==2.32.5
+scipy==1.13.1
+matplotlib==3.9.4
+Pillow==11.3.0
+biopython==1.85
+fair-esm==2.0.0
+reportlab==4.4.10

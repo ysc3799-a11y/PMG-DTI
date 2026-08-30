@@ -22,7 +22,7 @@ def slugify(text: str, max_len: int = 48) -> str:
 def fetch_bytes(url: str, timeout: int, max_retry: int, allow_404: bool = False) -> Optional[bytes]:
     for attempt in range(max(1, int(max_retry))):
         try:
-            r = requests.get(url, timeout=timeout, headers={"User-Agent": "Pha-DTI-RCSB-Asset-Downloader/1.0"})
+            r = requests.get(url, timeout=timeout, headers={"User-Agent": "PMG-DTI-RCSB-Asset-Downloader/1.0"})
             if r.status_code == 404 and allow_404:
                 return None
             r.raise_for_status()

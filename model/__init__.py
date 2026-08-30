@@ -1,4 +1,4 @@
 """
-Model package for Pha-DTI.
+Model package for PMG-DTI.
 """
 

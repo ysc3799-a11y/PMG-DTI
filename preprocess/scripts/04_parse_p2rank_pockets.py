@@ -13,8 +13,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(_THIS)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from p2rank_pockets_strict import build_index_from_protein_pockets_csv
-from pocket_graph_seqdist import load_p2rank_pockets
+from dataset.p2rank_pockets_strict import build_index_from_protein_pockets_csv
+from dataset.pocket_graph_seqdist import load_p2rank_pockets
 
 
 def mirror_processed_path(path: Path) -> Optional[Path]:
